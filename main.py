@@ -107,10 +107,15 @@ def executeMenuSelection():
     if selection in menu:
         menu[selection]["function"]()
 
+def spawnShell():
+    os.system(f"telnet {router.ip}")
+    print("Shell closed by user")
+
 
 # TUI menu
 menu = {
     "1": {"title": "Display password", "function": lambda: print(router.password)},
+    "2": {"title": "Pop a shell", "function": spawnShell},
     "99": {"title": "Exit", "function": exit}
 }
 
