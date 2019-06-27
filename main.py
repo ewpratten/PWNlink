@@ -1,6 +1,8 @@
 import socket
 import requests
+import struct
 import os
+import re
 
 ## CONFIGURATION ##
 
@@ -24,6 +26,7 @@ class Router:
     model: str
     password: str
 
+
 # Create a blank router
 router = Router()
 
@@ -44,26 +47,31 @@ routers = {
     "DIR-652": Attacks.USER
 }
 
-# TUI menu
-menu = {
-    1:{"title": "Display password", "function": lambda: print(router.password)}
-}
 
 ## FUNCTIONS ##
 
 
 def getRouterIP() -> str:
     """ Gets the IP address of the router """
+    
+    with open("/proc/net/route") as fh:
+        for line in fh:
+            fields = line.strip().split()
+            if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+                continue
 
-    # Temp return value
-    return "192.168.1.1"
+            return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
 
 
 def getRouterType(ip: str) -> str:
     """ Parse router configuration page to check router type """
 
-    # Temp return value
-    return ""
+    response = requests.get("http://" + ip).text
+    
+    # Use RE to parse router name from login page
+    title = re.search("<title>(.*)<\/title>", response)
+    
+    return title
 
 
 def isSupported(router_str: str) -> bool:
@@ -83,7 +91,29 @@ def checkDNS() -> str:
     return socket.gethostbyname("dlinkrouter.local")
 
 
+def displayMenu():
+    print("\n-- Main Menu ")
+    for item in menu.keys():
+        print("    " + item + ") " + menu[item]["title"])
+
+
+def executeMenuSelection():
+    selection = input(">")
+
+    # Execute selection
+    if selection in menu:
+        menu[selection]["function"]()
+
+
+# TUI menu
+menu = {
+    "1": {"title": "Display password", "function": lambda: print(router.password)},
+    "99": {"title": "Exit", "function": exit}
+}
+
 # Main function
+
+
 def main():
     # Clear screen
     os.system("clear")
@@ -102,16 +132,16 @@ def main():
     """
     print(ASCII.Red + banner)
 
-    
-
     # Check for router dns
     print(ASCII.Reset + "   [ ] Search for router via DNS...", end="\r")
 
+    # Try to get IP addr
     try:
         router.ip = checkDNS()
     except:
         router.ip = ""
 
+    # Check if our previous check was successful
     if router.ip != "":
         status_str = ASCII.Green + \
             "   [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
@@ -121,7 +151,7 @@ def main():
         # Check for router IP
         router.ip = getRouterIP()
         print(ASCII.Green + "   [*] " + ASCII.Reset +
-              "Found router ip via gateway          ")
+              "Found router ip via gateway (" + router.ip + ")     ")
 
     # Check router type
     router.model = getRouterType(router.ip)
@@ -144,7 +174,14 @@ def main():
     router.password = getPassword(router.ip, routers[router.model])
 
     # Display the menu
+    displayMenu()
 
+    try:
+        while True:
+            executeMenuSelection()
+    except KeyboardInterrupt:
+        print("Closing.. Goodbye!")
+        exit()
 
 
 # Do the python thingy
