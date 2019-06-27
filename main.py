@@ -1,3 +1,6 @@
+import socket
+import requests
+import os
 
 ## CONFIGURATION ##
 
@@ -12,6 +15,12 @@ class ASCII:
     Cyan = "\u001b[36m"
     White = "\u001b[37m"
     Reset = "\u001b[0m"
+
+# Router class
+class Router:
+    ip: str
+    model: str
+    password: str
 
 # Attack types enum
 
@@ -44,7 +53,7 @@ def getRouterType(ip: str) -> str:
     """ Parse router configuration page to check router type """
 
     # Temp return value
-    return "DGL-5500"
+    return ""
 
 
 def isSupported(router_str: str) -> bool:
@@ -59,9 +68,15 @@ def getPassword(ip: str, attack_type: int) -> str:
 
     return ""
 
+def checkDNS() -> str:
+    return socket.gethostbyname("dlinkrouter.local")
+
 
 # Main function
 def main():
+    # Clear screen
+    os.system("clear")
+
     # 1337 HAXXOR Banner
     banner = """
 
@@ -76,7 +91,32 @@ def main():
     """
     print(ASCII.Red + banner)
 
+    # Create a blank router
+    router = Router()
+
+    # Check for router dns
+    print(ASCII.Reset + "   [ ] Search for router via DNS...", end="\r")
+    
+    try:
+        router.ip = checkDNS()
+    except:
+        router.ip = ""
+    
+    if router.ip != "":
+        status_str = ASCII.Green + "   [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
+        print(ASCII.Green + "   [*] " + ASCII.Reset + "Found router ip via DNS         ")
+    else:
+        # Check for router IP
+        router.ip = getRouterIP()
+        print(ASCII.Green + "   [*] " + ASCII.Reset + "Found router ip via gateway          ")
+    
+    # Check router type
+    router.model = getRouterType(router.ip)
+    status_str = ASCII.Green + "   [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
+    print(status_str + ASCII.Reset + "Check router type")
+
 
 # Do the python thingy
 if __name__ == "__main__":
     main()
+    print(ASCII.Reset)
