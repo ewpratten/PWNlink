@@ -53,7 +53,7 @@ routers = {
 
 def getRouterIP() -> str:
     """ Gets the IP address of the router """
-    
+
     with open("/proc/net/route") as fh:
         for line in fh:
             fields = line.strip().split()
@@ -66,7 +66,10 @@ def getRouterIP() -> str:
 def getRouterType(ip: str) -> str:
     """ Parse router configuration page to check router type """
 
-    response = requests.get("http://" + ip).text
+    try:
+        response = requests.get("http://" + ip).text
+    except:
+        return ""
     
     # Use RE to parse router name from login page
     title = re.search("<title>(.*)<\/title>", response)
